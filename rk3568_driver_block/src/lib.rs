@@ -15,7 +15,7 @@ use sdmmc::emmc::clock::{init_global_clk, Clk, ClkError};
 pub use sdmmc::{set_impl, Kernel};
 pub use sdmmc::emmc::EMmcHost;
 
-const OFFSET: usize = 0x45_3200;
+const OFFSET: usize = 0x7_A000;
 
 /// Maps `SdError` values from the lower-level driver to generic `DevError`s.
 fn deal_emmc_err(err: SdError) -> ErrorBase {
