@@ -10,7 +10,6 @@ use rk3568_clk::RK3568ClkPriv ;
 use alloc::string::ToString;
 use core::convert::Into;
 use core::result::Result::{self, *};
-
 pub struct ClkDriver(RK3568ClkPriv);
 pub const EMMC_CLK_ID: usize = 0x7c;
 
