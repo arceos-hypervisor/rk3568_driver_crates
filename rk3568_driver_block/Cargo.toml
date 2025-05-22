@@ -1,0 +1,10 @@
+[package]
+name = "rk3568_driver_block"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = { workspace = true }
+somehal = { workspace = true }
+rdrive = "0.9.0"
+sdmmc = { git = "https://github.com/YanQD/sdmmc.git", default-features = false, features = ["pio"] }

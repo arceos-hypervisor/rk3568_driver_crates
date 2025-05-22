@@ -1,0 +1,9 @@
+[package]
+name = "rk3568_driver_clk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = { workspace = true }
+somehal = { workspace = true }
+rk3568_clk = { git = "https://github.com/YanLien/rk3568_clk.git" }
