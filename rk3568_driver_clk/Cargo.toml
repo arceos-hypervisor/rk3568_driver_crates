@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 log = { workspace = true }
 somehal = { workspace = true }
-rk3568_clk = { git = "https://github.com/YanLien/rk3568_clk.git" }
+rk3568_clk = { git = "https://github.com/arceos-hypervisor/rk3568_clk.git" }

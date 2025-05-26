@@ -527,10 +527,13 @@ checksum = "07aac72f95e774476db82916d79f2d303191310393830573c1ab5c821b21660a"
 [[package]]
 name = "rk3568_clk"
 version = "0.1.0"
-source = "git+https://github.com/YanLien/rk3568_clk.git#2120c28f91674bece2d1e1dea349919f929e7d89"
+source = "git+https://github.com/arceos-hypervisor/rk3568_clk.git#08dd2a52b2f0dd29d7580a3bb716f5e3bf919965"
 dependencies = [
+ "aarch64-cpu",
+ "bare-test-macros",
+ "fdt-parser",
+ "kspin",
  "log",
- "spin",
 ]
 
 [[package]]

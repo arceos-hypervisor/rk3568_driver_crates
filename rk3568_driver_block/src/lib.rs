@@ -6,14 +6,14 @@ extern crate alloc;
 use alloc::string::ToString;
 
 use rdrive::get_dev;
-use somehal::driver::{block::*, intc::Box, DriverGeneric};
+use somehal::driver::{DriverGeneric, block::*, intc::Box};
 
 use sdmmc::BLOCK_SIZE;
+use sdmmc::emmc::clock::{Clk, ClkError, init_global_clk};
 use sdmmc::err::SdError;
-use sdmmc::emmc::clock::{init_global_clk, Clk, ClkError};
 
-pub use sdmmc::{set_impl, Kernel};
 pub use sdmmc::emmc::EMmcHost;
+pub use sdmmc::{Kernel, set_impl};
 
 const OFFSET: usize = 0x7_A000;
 
@@ -21,38 +21,41 @@ const OFFSET: usize = 0x7_A000;
 fn deal_emmc_err(err: SdError) -> ErrorBase {
     match err {
         SdError::Timeout | SdError::DataTimeout => ErrorBase::Again,
-        SdError::Crc | SdError::EndBit | SdError::Index |
-        SdError::DataCrc | SdError::DataEndBit |
-        SdError::DataError => ErrorBase::Io,
+        SdError::Crc
+        | SdError::EndBit
+        | SdError::Index
+        | SdError::DataCrc
+        | SdError::DataEndBit
+        | SdError::DataError => ErrorBase::Io,
         SdError::BusPower | SdError::CurrentLimit => ErrorBase::Io,
         SdError::Acmd12Error | SdError::AdmaError => ErrorBase::Io,
-        SdError::InvalidResponse | SdError::InvalidResponseType => ErrorBase::InvalidArg { 
-            name: "response", 
-            val: "invalid".to_string() 
+        SdError::InvalidResponse | SdError::InvalidResponseType => ErrorBase::InvalidArg {
+            name: "response",
+            val: "invalid".to_string(),
         },
         SdError::NoCard => ErrorBase::Busy,
-        SdError::UnsupportedCard => ErrorBase::InvalidArg { 
-            name: "card", 
-            val: "unsupported".to_string() 
+        SdError::UnsupportedCard => ErrorBase::InvalidArg {
+            name: "card",
+            val: "unsupported".to_string(),
         },
         SdError::IoError | SdError::TransferError => ErrorBase::Io,
         SdError::CommandError => ErrorBase::Io,
-        SdError::TuningFailed | SdError::VoltageSwitchFailed => ErrorBase::InvalidArg { 
-            name: "configuration", 
-            val: "failed".to_string() 
+        SdError::TuningFailed | SdError::VoltageSwitchFailed => ErrorBase::InvalidArg {
+            name: "configuration",
+            val: "failed".to_string(),
         },
-        SdError::BadMessage | SdError::InvalidArgument => ErrorBase::InvalidArg { 
-            name: "parameter", 
-            val: "invalid".to_string() 
+        SdError::BadMessage | SdError::InvalidArgument => ErrorBase::InvalidArg {
+            name: "parameter",
+            val: "invalid".to_string(),
         },
         SdError::BufferOverflow | SdError::MemoryError => ErrorBase::NoMem,
-        SdError::BusWidth => ErrorBase::InvalidArg { 
-            name: "bus_width", 
-            val: "invalid".to_string() 
+        SdError::BusWidth => ErrorBase::InvalidArg {
+            name: "bus_width",
+            val: "invalid".to_string(),
         },
-        SdError::CardError(_, _) => ErrorBase::InvalidArg { 
-            name: "card_error", 
-            val: "card operation failed".to_string() 
+        SdError::CardError(_, _) => ErrorBase::InvalidArg {
+            name: "card_error",
+            val: "card operation failed".to_string(),
         },
     }
 }
@@ -82,17 +85,17 @@ impl Interface for EmmcDriver {
     fn read_block(&mut self, block_id: u64, buf: &mut [u8]) -> Result<(), ErrorBase> {
         let block_id = block_id + OFFSET as u64;
         if buf.len() < BLOCK_SIZE {
-            return Err(ErrorBase::InvalidArg { 
-                name: "buffer", 
-                val: "size too small".to_string() 
+            return Err(ErrorBase::InvalidArg {
+                name: "buffer",
+                val: "size too small".to_string(),
             });
         }
 
         let (prefix, _, suffix) = unsafe { buf.align_to_mut::<u32>() };
         if !prefix.is_empty() || !suffix.is_empty() {
-            return Err(ErrorBase::InvalidArg { 
-                name: "buffer", 
-                val: "not aligned to u32".to_string() 
+            return Err(ErrorBase::InvalidArg {
+                name: "buffer",
+                val: "not aligned to u32".to_string(),
             });
         }
 
@@ -105,17 +108,17 @@ impl Interface for EmmcDriver {
     fn write_block(&mut self, block_id: u64, buf: &[u8]) -> Result<(), ErrorBase> {
         let block_id = block_id + OFFSET as u64;
         if buf.len() < BLOCK_SIZE {
-            return Err(ErrorBase::InvalidArg { 
-                name: "buffer", 
-                val: "size too small".to_string() 
+            return Err(ErrorBase::InvalidArg {
+                name: "buffer",
+                val: "size too small".to_string(),
             });
         }
 
         let (prefix, _, suffix) = unsafe { buf.align_to::<u32>() };
         if !prefix.is_empty() || !suffix.is_empty() {
-            return Err(ErrorBase::InvalidArg { 
-                name: "buffer", 
-                val: "not aligned to u32".to_string() 
+            return Err(ErrorBase::InvalidArg {
+                name: "buffer",
+                val: "not aligned to u32".to_string(),
             });
         }
 

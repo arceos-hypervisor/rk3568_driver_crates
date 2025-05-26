@@ -3,21 +3,20 @@
 
 extern crate alloc;
 
-use somehal::driver::{clk::*, DriverGeneric};
+use rk3568_clk::CRU;
+use somehal::driver::{DriverGeneric, clk::*};
 
 use log::{debug, warn};
-use rk3568_clk::RK3568ClkPriv ;
+// use rk3568_clk::RK3568ClkPriv;
 use alloc::string::ToString;
 use core::convert::Into;
 use core::result::Result::{self, *};
-pub struct ClkDriver(RK3568ClkPriv);
+pub struct ClkDriver(CRU);
 pub const EMMC_CLK_ID: usize = 0x7c;
 
 impl ClkDriver {
     pub fn new(cru_address: u64) -> Self {
-        ClkDriver (
-            unsafe { RK3568ClkPriv ::new(cru_address as *mut _) }
-        )
+        ClkDriver(CRU::new(cru_address as *mut _))
     }
 }
 
@@ -33,17 +32,17 @@ impl DriverGeneric for ClkDriver {
 
 impl Interface for ClkDriver {
     fn perper_enable(&mut self) {
-        debug!("perper_enable");    
+        debug!("perper_enable");
     }
 
     fn get_rate(&self, id: ClockId) -> Result<u64, ErrorBase> {
         let rate = match id.into() {
-            EMMC_CLK_ID => self.0.emmc_get_clk().unwrap(),
-            _ => { 
+            EMMC_CLK_ID => self.0.cru_clksel_get_cclk_emmc(),
+            _ => {
                 warn!("Unsupported clock ID: {:?}", id);
-                Err(ErrorBase::InvalidArg { 
-                    name: "clock_id", 
-                    val: "unsupported".to_string() 
+                Err(ErrorBase::InvalidArg {
+                    name: "clock_id",
+                    val: "unsupported".to_string(),
                 })?
             }
         };
@@ -53,16 +52,13 @@ impl Interface for ClkDriver {
     fn set_rate(&mut self, id: ClockId, rate: u64) -> Result<(), ErrorBase> {
         match id.into() {
             EMMC_CLK_ID => {
-                self.0.emmc_set_clk(rate).map_err(|_| ErrorBase::InvalidArg {
-                    name: "emmc_clk",
-                    val: "failed to set clock rate".to_string()
-                })?;
+                self.0.cru_clksel_set_cclk_emmc(rate as u32);
             }
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
-                return Err(ErrorBase::InvalidArg { 
-                    name: "clock_id", 
-                    val: "unsupported".to_string() 
+                return Err(ErrorBase::InvalidArg {
+                    name: "clock_id",
+                    val: "unsupported".to_string(),
                 });
             }
         }
