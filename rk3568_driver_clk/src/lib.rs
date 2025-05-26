@@ -3,11 +3,15 @@
 
 extern crate alloc;
 
+use rk3568_clk::cru_clksel_con28_bits::{CRU_CLKSEL_CCLK_EMMC_CPL_DIV_100M, CRU_CLKSEL_CCLK_EMMC_CPL_DIV_50M, CRU_CLKSEL_CCLK_EMMC_GPL_DIV_150M, CRU_CLKSEL_CCLK_EMMC_GPL_DIV_200M, CRU_CLKSEL_CCLK_EMMC_POS, CRU_CLKSEL_CCLK_EMMC_SOC0_375K, CRU_CLKSEL_CCLK_EMMC_XIN_SOC0_MUX};
 use rk3568_clk::CRU;
 use somehal::driver::{DriverGeneric, clk::*};
 
-use log::{debug, warn};
-// use rk3568_clk::RK3568ClkPriv;
+/// 频率常量
+const MHZ: u32 = 1_000_000;
+const KHZ: u32 = 1_000;
+
+use log::{debug, info, warn};
 use alloc::string::ToString;
 use core::convert::Into;
 use core::result::Result::{self, *};
@@ -37,7 +41,10 @@ impl Interface for ClkDriver {
 
     fn get_rate(&self, id: ClockId) -> Result<u64, ErrorBase> {
         let rate = match id.into() {
-            EMMC_CLK_ID => self.0.cru_clksel_get_cclk_emmc(),
+            EMMC_CLK_ID => {
+                let con = self.0.cru_clksel_get_cclk_emmc();
+                con >> CRU_CLKSEL_CCLK_EMMC_POS
+            },
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
                 Err(ErrorBase::InvalidArg {
@@ -52,7 +59,17 @@ impl Interface for ClkDriver {
     fn set_rate(&mut self, id: ClockId, rate: u64) -> Result<(), ErrorBase> {
         match id.into() {
             EMMC_CLK_ID => {
-                self.0.cru_clksel_set_cclk_emmc(rate as u32);
+                info!("Setting eMMC clock to {} Hz", rate);    
+                let src_clk = match rate as u32 {
+                    r if r == 24 * MHZ => CRU_CLKSEL_CCLK_EMMC_XIN_SOC0_MUX,
+                    r if r == 52 * MHZ || r == 50 * MHZ => CRU_CLKSEL_CCLK_EMMC_CPL_DIV_50M,
+                    r if r == 100 * MHZ => CRU_CLKSEL_CCLK_EMMC_CPL_DIV_100M,
+                    r if r == 150 * MHZ => CRU_CLKSEL_CCLK_EMMC_GPL_DIV_150M,
+                    r if r == 200 * MHZ => CRU_CLKSEL_CCLK_EMMC_GPL_DIV_200M,
+                    r if r == 400 * KHZ || r == 375 * KHZ => CRU_CLKSEL_CCLK_EMMC_SOC0_375K,
+                    _ => panic!("Unsupported eMMC clock rate: {} Hz", rate),
+                };
+                self.0.cru_clksel_set_cclk_emmc(src_clk);
             }
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
