@@ -5,6 +5,5 @@ edition = "2024"
 
 [dependencies]
 log = { workspace = true }
-somehal = { workspace = true }
-rdrive = "0.9.0"
+rdrive = { workspace = true }
 sdmmc = { git = "https://github.com/YanQD/sdmmc.git", default-features = false, features = ["pio"] }

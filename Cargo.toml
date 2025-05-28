@@ -10,5 +10,5 @@ members = [
 version = "0.1.0"
 
 [workspace.dependencies]
-log = "=0.4.21"
-somehal = { git = "https://github.com/rcore-os/somehal.git" }
+log = "0.4"
+rdrive = "0.10.4"

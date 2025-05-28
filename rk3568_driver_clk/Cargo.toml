@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 log = { workspace = true }
-somehal = { workspace = true }
+rdrive = { workspace = true }
 rk3568_clk = { git = "https://github.com/arceos-hypervisor/rk3568_clk.git" }

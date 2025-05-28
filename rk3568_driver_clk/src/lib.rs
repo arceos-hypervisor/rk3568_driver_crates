@@ -1,20 +1,22 @@
 #![no_std]
-#![feature(used_with_arg)]
 
 extern crate alloc;
 
-use rk3568_clk::cru_clksel_con28_bits::{CRU_CLKSEL_CCLK_EMMC_CPL_DIV_100M, CRU_CLKSEL_CCLK_EMMC_CPL_DIV_50M, CRU_CLKSEL_CCLK_EMMC_GPL_DIV_150M, CRU_CLKSEL_CCLK_EMMC_GPL_DIV_200M, CRU_CLKSEL_CCLK_EMMC_POS, CRU_CLKSEL_CCLK_EMMC_SOC0_375K, CRU_CLKSEL_CCLK_EMMC_XIN_SOC0_MUX};
+use rdrive::{DriverGeneric, clk::*};
 use rk3568_clk::CRU;
-use somehal::driver::{DriverGeneric, clk::*};
+use rk3568_clk::cru_clksel_con28_bits::{
+    CRU_CLKSEL_CCLK_EMMC_CPL_DIV_50M, CRU_CLKSEL_CCLK_EMMC_CPL_DIV_100M,
+    CRU_CLKSEL_CCLK_EMMC_GPL_DIV_150M, CRU_CLKSEL_CCLK_EMMC_GPL_DIV_200M, CRU_CLKSEL_CCLK_EMMC_POS,
+    CRU_CLKSEL_CCLK_EMMC_SOC0_375K, CRU_CLKSEL_CCLK_EMMC_XIN_SOC0_MUX,
+};
 
 /// 频率常量
 const MHZ: u32 = 1_000_000;
 const KHZ: u32 = 1_000;
 
-use log::{debug, info, warn};
-use alloc::string::ToString;
 use core::convert::Into;
 use core::result::Result::{self, *};
+use log::{debug, info, warn};
 pub struct ClkDriver(CRU);
 pub const EMMC_CLK_ID: usize = 0x7c;
 
@@ -44,13 +46,10 @@ impl Interface for ClkDriver {
             EMMC_CLK_ID => {
                 let con = self.0.cru_clksel_get_cclk_emmc();
                 con >> CRU_CLKSEL_CCLK_EMMC_POS
-            },
+            }
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
-                Err(ErrorBase::InvalidArg {
-                    name: "clock_id",
-                    val: "unsupported".to_string(),
-                })?
+                Err(ErrorBase::InvalidArg { name: "clock_id" })?
             }
         };
         Ok(rate as u64)
@@ -59,7 +58,7 @@ impl Interface for ClkDriver {
     fn set_rate(&mut self, id: ClockId, rate: u64) -> Result<(), ErrorBase> {
         match id.into() {
             EMMC_CLK_ID => {
-                info!("Setting eMMC clock to {} Hz", rate);    
+                info!("Setting eMMC clock to {} Hz", rate);
                 let src_clk = match rate as u32 {
                     r if r == 24 * MHZ => CRU_CLKSEL_CCLK_EMMC_XIN_SOC0_MUX,
                     r if r == 52 * MHZ || r == 50 * MHZ => CRU_CLKSEL_CCLK_EMMC_CPL_DIV_50M,
@@ -73,10 +72,7 @@ impl Interface for ClkDriver {
             }
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
-                return Err(ErrorBase::InvalidArg {
-                    name: "clock_id",
-                    val: "unsupported".to_string(),
-                });
+                return Err(ErrorBase::InvalidArg { name: "clock_id" });
             }
         }
         Ok(())
