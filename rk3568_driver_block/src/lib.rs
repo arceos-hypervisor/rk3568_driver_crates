@@ -3,7 +3,9 @@
 
 extern crate alloc;
 
-use rdrive::{DriverGeneric, block::*, get_dev, intc::Box};
+use alloc::boxed::Box;
+use alloc::format;
+use rdrive::{DriverGeneric, block::*, get_dev};
 
 use sdmmc::BLOCK_SIZE;
 use sdmmc::emmc::clock::{Clk, ClkError, init_global_clk};
@@ -15,33 +17,28 @@ pub use sdmmc::{Kernel, set_impl};
 const OFFSET: usize = 0x7_A000;
 
 /// Maps `SdError` values from the lower-level driver to generic `DevError`s.
-fn deal_emmc_err(err: SdError) -> ErrorBase {
-    match err {
-        SdError::Timeout | SdError::DataTimeout => ErrorBase::Again,
-        SdError::Crc
-        | SdError::EndBit
-        | SdError::Index
-        | SdError::DataCrc
-        | SdError::DataEndBit
-        | SdError::DataError => ErrorBase::Io,
-        SdError::BusPower | SdError::CurrentLimit => ErrorBase::Io,
-        SdError::Acmd12Error | SdError::AdmaError => ErrorBase::Io,
+fn deal_emmc_err(err: SdError) -> io::Error {
+    let kind = match err {
+        SdError::Timeout | SdError::DataTimeout => io::ErrorKind::TimedOut,
+
         SdError::InvalidResponse | SdError::InvalidResponseType => {
-            ErrorBase::InvalidArg { name: "response" }
+            io::ErrorKind::InvalidParameter { name: "response" }
         }
-        SdError::NoCard => ErrorBase::Busy,
-        SdError::UnsupportedCard => ErrorBase::InvalidArg { name: "card" },
-        SdError::IoError | SdError::TransferError => ErrorBase::Io,
-        SdError::CommandError => ErrorBase::Io,
-        SdError::TuningFailed | SdError::VoltageSwitchFailed => ErrorBase::InvalidArg {
+        SdError::UnsupportedCard => io::ErrorKind::InvalidParameter { name: "card" },
+
+        SdError::TuningFailed | SdError::VoltageSwitchFailed => io::ErrorKind::InvalidParameter {
             name: "configuration",
         },
         SdError::BadMessage | SdError::InvalidArgument => {
-            ErrorBase::InvalidArg { name: "parameter" }
+            io::ErrorKind::InvalidParameter { name: "parameter" }
         }
-        SdError::BufferOverflow | SdError::MemoryError => ErrorBase::NoMem,
-        SdError::BusWidth => ErrorBase::InvalidArg { name: "bus_width" },
-        SdError::CardError(_, _) => ErrorBase::InvalidArg { name: "card_error" },
+        SdError::BusWidth => io::ErrorKind::InvalidParameter { name: "bus_width" },
+        SdError::CardError(_, _) => io::ErrorKind::InvalidParameter { name: "card_error" },
+        _ => io::ErrorKind::Other(format!("{err}").into()),
+    };
+    io::Error {
+        kind,
+        success_pos: 0,
     }
 }
 
@@ -56,26 +53,32 @@ impl EmmcDriver {
 }
 
 impl DriverGeneric for EmmcDriver {
-    fn open(&mut self) -> Result<(), ErrorBase> {
+    fn open(&mut self) -> Result<(), KError> {
         Ok(())
     }
 
-    fn close(&mut self) -> Result<(), ErrorBase> {
+    fn close(&mut self) -> Result<(), KError> {
         Ok(())
     }
 }
 
 impl Interface for EmmcDriver {
     /// Reads a single block from the eMMC device into the provided buffer.
-    fn read_block(&mut self, block_id: u64, buf: &mut [u8]) -> Result<(), ErrorBase> {
-        let block_id = block_id + OFFSET as u64;
+    fn read_block(&mut self, block_id: usize, buf: &mut [u8]) -> Result<(), io::Error> {
+        let block_id = block_id + OFFSET;
         if buf.len() < BLOCK_SIZE {
-            return Err(ErrorBase::InvalidArg { name: "buffer" });
+            return Err(io::Error {
+                kind: io::ErrorKind::InvalidParameter { name: "buffer" },
+                success_pos: 0,
+            });
         }
 
         let (prefix, _, suffix) = unsafe { buf.align_to_mut::<u32>() };
         if !prefix.is_empty() || !suffix.is_empty() {
-            return Err(ErrorBase::InvalidArg { name: "buffer" });
+            return Err(io::Error {
+                kind: io::ErrorKind::InvalidParameter { name: "buffer" },
+                success_pos: 0,
+            });
         }
 
         self.0
@@ -84,15 +87,21 @@ impl Interface for EmmcDriver {
     }
 
     /// Writes a single block to the eMMC device from the given buffer.
-    fn write_block(&mut self, block_id: u64, buf: &[u8]) -> Result<(), ErrorBase> {
-        let block_id = block_id + OFFSET as u64;
+    fn write_block(&mut self, block_id: usize, buf: &[u8]) -> Result<(), io::Error> {
+        let block_id = block_id + OFFSET;
         if buf.len() < BLOCK_SIZE {
-            return Err(ErrorBase::InvalidArg { name: "buffer" });
+            return Err(io::Error {
+                kind: io::ErrorKind::InvalidParameter { name: "buffer" },
+                success_pos: 0,
+            });
         }
 
         let (prefix, _, suffix) = unsafe { buf.align_to::<u32>() };
         if !prefix.is_empty() || !suffix.is_empty() {
-            return Err(ErrorBase::InvalidArg { name: "buffer" });
+            return Err(io::Error {
+                kind: io::ErrorKind::InvalidParameter { name: "buffer" },
+                success_pos: 0,
+            });
         }
 
         self.0
@@ -101,14 +110,14 @@ impl Interface for EmmcDriver {
     }
 
     /// Flushes any cached writes (no-op for now).
-    fn flush(&mut self) -> Result<(), ErrorBase> {
+    fn flush(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
     /// Returns the total number of blocks available on the device.
     #[inline]
-    fn num_blocks(&self) -> u64 {
-        self.0.get_block_num()
+    fn num_blocks(&self) -> usize {
+        self.0.get_block_num() as _
     }
 
     /// Returns the block size in bytes.

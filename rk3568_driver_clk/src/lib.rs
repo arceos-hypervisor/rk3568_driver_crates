@@ -27,11 +27,11 @@ impl ClkDriver {
 }
 
 impl DriverGeneric for ClkDriver {
-    fn open(&mut self) -> Result<(), ErrorBase> {
+    fn open(&mut self) -> Result<(), KError> {
         Ok(())
     }
 
-    fn close(&mut self) -> Result<(), ErrorBase> {
+    fn close(&mut self) -> Result<(), KError> {
         Ok(())
     }
 }
@@ -41,7 +41,7 @@ impl Interface for ClkDriver {
         debug!("perper_enable");
     }
 
-    fn get_rate(&self, id: ClockId) -> Result<u64, ErrorBase> {
+    fn get_rate(&self, id: ClockId) -> Result<u64, KError> {
         let rate = match id.into() {
             EMMC_CLK_ID => {
                 let con = self.0.cru_clksel_get_cclk_emmc();
@@ -49,13 +49,13 @@ impl Interface for ClkDriver {
             }
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
-                Err(ErrorBase::InvalidArg { name: "clock_id" })?
+                Err(KError::InvalidArg { name: "clock_id" })?
             }
         };
         Ok(rate as u64)
     }
 
-    fn set_rate(&mut self, id: ClockId, rate: u64) -> Result<(), ErrorBase> {
+    fn set_rate(&mut self, id: ClockId, rate: u64) -> Result<(), KError> {
         match id.into() {
             EMMC_CLK_ID => {
                 info!("Setting eMMC clock to {} Hz", rate);
@@ -72,7 +72,7 @@ impl Interface for ClkDriver {
             }
             _ => {
                 warn!("Unsupported clock ID: {:?}", id);
-                return Err(ErrorBase::InvalidArg { name: "clock_id" });
+                return Err(KError::InvalidArg { name: "clock_id" });
             }
         }
         Ok(())
